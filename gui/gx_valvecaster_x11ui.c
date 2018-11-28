@@ -694,6 +694,7 @@ static bool get_active_controller_num(gx_valvecasterUI *ui, int *num) {
 	for (int i=0;i<CONTROLS;i++) {
 		if (ui->controls[i].is_active) {
 			*(num) = i;
+			debug_print("get_active_controller_num %i \n",i);
 			return true;
 		}
 	}
@@ -949,7 +950,7 @@ static void event_handler(gx_valvecasterUI *ui) {
 			case MotionNotify:
 				// mouse move while button1 is pressed
 				debug_print("mouse move from %i to %i  \n", ui->pos_y, xev.xmotion.y);
-				if(xev.xmotion.state == Button1MotionMask) {
+				if(xev.xmotion.state  & Button1Mask) {
 					motion_event(ui, ui->start_value, xev.xmotion.y);
 				}
 			break;
