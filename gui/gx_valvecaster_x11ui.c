@@ -39,6 +39,14 @@
 #define max(x, y) ((x) < (y) ? (y) : (x))
 #endif
 
+
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+#define debug_print(...) \
+            ((void)((DEBUG) ? fprintf(stderr, __VA_ARGS__) : 0))
+
+
 /*---------------------------------------------------------------------
 -----------------------------------------------------------------------	
 		define some MACROS to read png data from binary stream 
@@ -170,6 +178,7 @@ typedef struct {
 	cairo_t *cr;
 
 	gx_controller controls[CONTROLS];
+	double start_value;
 	gx_scale rescale;
 
 	void *controller;
@@ -249,7 +258,7 @@ static LV2UI_Handle instantiate(const struct _LV2UI_Descriptor * descriptor,
 	ui->controls[1] = (gx_controller) {{0.5, 0.5, 0.0, 1.0, 0.01}, {110, 30, 61, 61}, false,"GAIN", KNOB, GAIN};
 	ui->controls[2] = (gx_controller) {{0.5, 0.5, 0.0, 1.0, 0.01}, {190, 30, 61, 61}, false,"TONE", KNOB, TONE};
 	ui->controls[3] = (gx_controller) {{0.5, 0.5, 0.0, 1, 0.01}, {270, 30, 61, 61}, false,"VOLUME", KNOB, VOLUME};
-
+	ui->start_value = 0.0;
 
 	ui->pedal = cairo_image_surface_create_from_stream(ui, LDVAR(pedal_png));
 	ui->init_width = cairo_image_surface_get_width(ui->pedal);
@@ -640,6 +649,7 @@ static void check_value_changed(gx_valvecasterUI *ui, int i, float* value) {
 	if(fabs(*(value) - ui->controls[i].adj.value)>=0.00001) {
 		ui->controls[i].adj.value = *(value);
 		ui->write_function(ui->controller,ui->controls[i].port,sizeof(float),0,value);
+		debug_print("send_controller_event for %i value %f\n",i,*(value));
 		send_controller_event(ui, i);
 	}
 }
@@ -670,6 +680,7 @@ static bool get_active_ctl_num(gx_valvecasterUI *ui, int *num) {
 		if (aligned(ui->pos_x, ui->pos_y, &ui->controls[i], ui)) {
 			*(num) = i;
 			check_is_active(ui, i, true);
+			debug_print("get_active_ctl_num %i \n",i);
 			ret = true;
 		} else {
 			check_is_active(ui, i, false);
@@ -723,6 +734,7 @@ static void switch_event(gx_valvecasterUI *ui, int i) {
 // left mouse button is pressed, generate a switch event, or set controller active
 static void button1_event(gx_valvecasterUI *ui, double* start_value) {
 	int num;
+	debug_print("Button1_event \n");
 	if (get_active_ctl_num(ui, &num)) {
 		if (ui->controls[num].type == BSWITCH ||ui->controls[num].type == SWITCH) {
 			switch_event(ui, num);
@@ -730,6 +742,7 @@ static void button1_event(gx_valvecasterUI *ui, double* start_value) {
 			enum_event(ui, num);
 		} else {
 			*(start_value) = ui->controls[num].adj.value;
+			debug_print("Button1_event set start value %f \n", *(start_value));
 		}
 	}
 }
@@ -739,6 +752,7 @@ static void motion_event(gx_valvecasterUI *ui, double start_value, int m_y) {
 	static const double scaling = 0.5;
 	float value = 0.0;
 	int num;
+	debug_print("motion_event \n");
 	if (get_active_controller_num(ui, &num)) {
 		if (ui->controls[num].type != BSWITCH && ui->controls[num].type != SWITCH && ui->controls[num].type != ENUM) {
 			double knobstate = (start_value - ui->controls[num].adj.min_value) /
@@ -746,6 +760,7 @@ static void motion_event(gx_valvecasterUI *ui, double start_value, int m_y) {
 			double nsteps = ui->controls[num].adj.step / (ui->controls[num].adj.max_value-ui->controls[num].adj.min_value);
 			double nvalue = min(1.0,max(0.0,knobstate + ((double)(ui->pos_y - m_y)*scaling *nsteps)));
 			value = nvalue * (ui->controls[num].adj.max_value-ui->controls[num].adj.min_value) + ui->controls[num].adj.min_value;
+			debug_print("motion_event check value changed from %f to %f \n",ui->controls[num].adj.value, value);
 			check_value_changed(ui, num, &value);
 		}
 	}
@@ -848,7 +863,6 @@ static void get_last_active_controller(gx_valvecasterUI *ui, bool set) {
 // general xevent handler
 static void event_handler(gx_valvecasterUI *ui) {
 	XEvent xev;
-	static double start_value = 0.0;
 	static bool blocked = false;
 
 	while (XPending(ui->dpy) > 0) {
@@ -868,6 +882,7 @@ static void event_handler(gx_valvecasterUI *ui) {
 			case ButtonPress:
 				ui->pos_x = xev.xbutton.x;
 				ui->pos_y = xev.xbutton.y;
+				debug_print("Button %i pressed \n", xev.xbutton.button);
 
 				switch(xev.xbutton.button) {
 					case Button1:
@@ -875,15 +890,15 @@ static void event_handler(gx_valvecasterUI *ui) {
 							blocked = true;
 						}
 						// left mouse button click
-						button1_event(ui, &start_value);
+						button1_event(ui, &ui->start_value);
 					break;
 					case Button2:
 						// click on the mouse wheel
-						//fprintf(stderr,"Button2 \n");
+						//debug_print("Button2 \n");
 					break;
 					case Button3:
 						// right mouse button click
-						//fprintf(stderr,"Button3 \n");
+						//debug_print("Button3 \n");
 					break;
 					case  Button4:
 						// mouse wheel scroll up
@@ -904,6 +919,7 @@ static void event_handler(gx_valvecasterUI *ui) {
 			break;
 
 			case KeyPress:
+				debug_print("KeyPress %i state %i \n",xev.xkey.keycode,xev.xkey.state);
 				if ((xev.xkey.state == ShiftMask) &&
 				  (xev.xkey.keycode == XKeysymToKeycode(ui->dpy,XK_Tab)))
 					set_previous_controller_active(ui);
@@ -932,8 +948,9 @@ static void event_handler(gx_valvecasterUI *ui) {
 			break;
 			case MotionNotify:
 				// mouse move while button1 is pressed
+				debug_print("mouse move from %i to %i  \n", ui->pos_y, xev.xmotion.y);
 				if(xev.xmotion.state == Button1MotionMask) {
-					motion_event(ui, start_value, xev.xmotion.y);
+					motion_event(ui, ui->start_value, xev.xmotion.y);
 				}
 			break;
 			case ClientMessage:

@@ -35,6 +35,7 @@
 	VER = 0.1
 	# set compile flags
 	CXXFLAGS += -I. -I./dsp -I./plugin -fPIC -DPIC -O2 -Wall -funroll-loops -ffast-math -fomit-frame-pointer -fstrength-reduce -fdata-sections -Wl,--gc-sections $(SSE_CFLAGS)
+	DEBUGFLAGS += -I. -I./dsp -I./plugin -fPIC -DPIC -O2 -Wall -D DEBUG
 	LDFLAGS += -I. -shared -lm 
 	GUI_LDFLAGS += -I./gui -shared -lm `pkg-config --cflags --libs cairo` -L/usr/X11/lib -lX11
 	# invoke build files
@@ -49,6 +50,14 @@
 .PHONY : mod all clean install uninstall 
 
 all : check $(NAME)
+	@mkdir -p ./$(BUNDLE)
+	@cp ./plugin/*.ttl ./$(BUNDLE)
+	@mv ./*.so ./$(BUNDLE)
+	@if [ -f ./$(BUNDLE)/$(NAME).so ]; then echo $(BLUE)"build finish, now run make install"; \
+	else echo $(RED)"sorry, build failed"; fi
+	@echo $(NONE)
+
+debug : check $(NAME)debug
 	@mkdir -p ./$(BUNDLE)
 	@cp ./plugin/*.ttl ./$(BUNDLE)
 	@mv ./*.so ./$(BUNDLE)
@@ -105,6 +114,10 @@ $(NAME) : clean $(RES_OBJECTS)
 	$(CC) $(CXXFLAGS) -Wl,-z,nodelete $(GUI_OBJECTS) $(RES_OBJECTS) $(GUI_LDFLAGS) -o $(NAME)_ui.so
 	$(STRIP) -s -x -X -R .comment -R .eh_frame -R .eh_frame_hdr -R .note.gnu.build-id -R .note.ABI-tag $(NAME).so
 	$(STRIP) -s -x -X -R .comment -R .eh_frame -R .eh_frame_hdr -R .note.gnu.build-id -R .note.ABI-tag $(NAME)_ui.so
+
+$(NAME)debug : clean $(RES_OBJECTS)
+	$(CXX) $(DEBUGFLAGS) $(OBJECTS) $(LDFLAGS) -o $(NAME).so
+	$(CC) $(DEBUGFLAGS) -Wl,-z,nodelete $(GUI_OBJECTS) $(RES_OBJECTS) $(GUI_LDFLAGS) -o $(NAME)_ui.so
 
 nogui : clean
 	$(CXX) $(CXXFLAGS) $(OBJECTS) $(LDFLAGS) -o $(NAME).so
