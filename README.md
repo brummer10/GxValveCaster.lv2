@@ -4,6 +4,30 @@ The ValveCaster is a little tube boost pedal simulation. It adds some overdrive 
 
 ![GxValveCaster](https://raw.githubusercontent.com/brummer10/GxValveCaster.lv2/master/GxValveCaster.png)
 
+## Keyboard shortcuts
+
+|   Command       |     |   Action                      |
+|-----------------|:---:|-------------------------------|
+|TAB              |==   |make next controller active    |
+|SHIFT+TAB        |==   |make previus controller active |
+|UP or RIGHT      |==   |increase controller value      |
+|DOWN or LEFT     |==   |decrease controller value      |
+|HOME (pos1)      |==   |set min controller value       |
+|END              |==   |set max controller value       |
+|INSERT           |==   |set standard value             |
+
+## Numpad shortcuts
+
+|   Command       |     |   Action                      |
+|-----------------|:---:|-------------------------------|
+|+                |==   |make next controller active    |
+|-                |==   |make previus controller active |
+|UP or RIGHT      |==   |increase controller value      |
+|DOWN or LEFT     |==   |decrease controller value      |
+|HOME (pos1)      |==   |set min controller value       |
+|END              |==   |set max controller value       |
+|INSERT           |==   |set standard value             |
+
 
 ###### BUILD DEPENDENCY’S 
 
