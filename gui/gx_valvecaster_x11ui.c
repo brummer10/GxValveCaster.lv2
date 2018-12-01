@@ -502,7 +502,7 @@ static void bypass_expose(gx_valvecasterUI *ui, gx_controller* switch_) {
 	cairo_paint(ui->crf);
 	cairo_set_operator(ui->crf,CAIRO_OPERATOR_OVER);
 
-	cairo_set_source_surface (ui->crf, ui->pswitch, -81 * switch_->adj.value, 0);
+	cairo_set_source_surface (ui->crf, ui->pswitch, -80 * switch_->adj.value, 0);
 
 	//cairo_paint (ui->crf);
 	cairo_rectangle(ui->crf,0, 0, 81, 81);
