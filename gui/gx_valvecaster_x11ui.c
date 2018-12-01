@@ -260,16 +260,16 @@ static LV2UI_Handle instantiate(const struct _LV2UI_Descriptor * descriptor,
 		return NULL;
 	}
 
-	ui->controls[0] = (gx_controller) {{1.0, 1.0, 0.0, 1.0, 1.0}, {40, 30, 61, 61}, false,"POWER", BSWITCH, BYPASS};
-	ui->controls[1] = (gx_controller) {{0.5, 0.5, 0.0, 1.0, 0.01}, {110, 30, 61, 61}, false,"GAIN", KNOB, GAIN};
-	ui->controls[2] = (gx_controller) {{0.5, 0.5, 0.0, 1.0, 0.01}, {190, 30, 61, 61}, false,"TONE", KNOB, TONE};
-	ui->controls[3] = (gx_controller) {{0.5, 0.5, 0.0, 1, 0.01}, {270, 30, 61, 61}, false,"VOLUME", KNOB, VOLUME};
+	ui->controls[0] = (gx_controller) {{1.0, 1.0, 0.0, 1.0, 1.0}, {40, 70, 81, 81}, false,"POWER", BSWITCH, BYPASS};
+	ui->controls[1] = (gx_controller) {{0.5, 0.5, 0.0, 1.0, 0.01}, {350, 70, 81, 81}, false,"GAIN", KNOB, GAIN};
+	ui->controls[2] = (gx_controller) {{0.5, 0.5, 0.0, 1.0, 0.01}, {480, 70, 81, 81}, false,"TONE", KNOB, TONE};
+	ui->controls[3] = (gx_controller) {{0.5, 0.5, 0.0, 1, 0.01}, {610, 70, 81, 81}, false,"VOLUME", KNOB, VOLUME};
 	ui->start_value = 0.0;
 
 	ui->pedal = cairo_image_surface_create_from_stream(ui, LDVAR(pedal_png));
 	ui->init_width = cairo_image_surface_get_width(ui->pedal);
 	ui->height = ui->init_height = cairo_image_surface_get_height(ui->pedal);
-	ui->width = ui->init_width -140 + (70 * CONTROLS);
+	ui->width = ui->init_width;
 
 	ui->win = XCreateWindow(ui->dpy, (Window)ui->parentXwindow, 0, 0,
 								ui->width, ui->height, 0,
@@ -289,7 +289,7 @@ static LV2UI_Handle instantiate(const struct _LV2UI_Descriptor * descriptor,
 										ui->width, ui->height);
 	ui->cr = cairo_create(ui->surface);
 
-	ui->frame = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, 61, 81);
+	ui->frame = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, 81, 101);
 	ui->crf = cairo_create (ui->frame);
 
 	ui->pswitch = cairo_image_surface_create_from_stream(ui, LDVAR(pswitch_png));
@@ -305,7 +305,7 @@ static LV2UI_Handle instantiate(const struct _LV2UI_Descriptor * descriptor,
 	ui->rescale.y  = (double)ui->height/ui->init_height;
 	ui->rescale.x1 = (double)ui->init_width/ui->width;
 	ui->rescale.y1 = (double)ui->init_height/ui->height;
-	ui->rescale.xc = (double)ui->width/(ui->init_width-140 + (70 * CONTROLS));
+	ui->rescale.xc = (double)ui->width/ui->init_width;
 	ui->rescale.c = (ui->rescale.xc < ui->rescale.y) ? ui->rescale.xc : ui->rescale.y;
 	ui->rescale.x2 =  ui->rescale.xc / ui->rescale.c;
 	ui->rescale.y2 = ui->rescale.y / ui->rescale.c;
@@ -374,68 +374,49 @@ static void knob_expose(gx_valvecasterUI *ui,gx_controller* knob) {
 
 	double pointer_off =knob_x/6;
 	double radius = min(knob_x-pointer_off, knob_y-pointer_off) / 2;
-	double lengh_x = (knobx+radius+pointer_off/2) - radius * sin(angle);
-	double lengh_y = (knoby+radius+pointer_off/2) + radius * cos(angle);
-	double radius_x = (knobx+radius+pointer_off/2) - radius/ 1.18 * sin(angle);
-	double radius_y = (knoby+radius+pointer_off/2) + radius/ 1.18 * cos(angle);
+	double lengh_x = (knobx+radius+pointer_off/2) - radius/1.4 * sin(angle);
+	double lengh_y = (knoby+radius+pointer_off/2) + radius/1.4 * cos(angle);
+	double radius_x = (knobx+radius+pointer_off/2) - radius/ 1.6 * sin(angle);
+	double radius_y = (knoby+radius+pointer_off/2) + radius/ 1.6 * cos(angle);
 
-	cairo_arc(ui->crf,knobx1+arc_offset, knoby1+arc_offset, knob_x/2.1, 0, 2 * M_PI );
-	cairo_pattern_t*pat =
-	cairo_pattern_create_radial (knobx1+arc_offset-knob_x/6,knoby1+arc_offset-knob_x/6, 1,knobx1+arc_offset,knoby1+arc_offset,knob_x/2.1 );
-	cairo_pattern_add_color_stop_rgb (pat, 1.0, 0.04, 0.04, 0.04);
-	cairo_pattern_add_color_stop_rgb (pat, 0.9, 0.18, 0.10, 0.08);
-	cairo_pattern_add_color_stop_rgb (pat, 0.7, 0.02, 0.02,0.02);
-	cairo_pattern_add_color_stop_rgb (pat, 0.5, 0.01, 0.01,0.01);
+	cairo_pattern_t* pat;
+	cairo_new_path (ui->crf);
 
+	pat = cairo_pattern_create_linear (0, 0, 0, knob_y);
+	cairo_pattern_add_color_stop_rgba (pat, 0,  0.0, 0.0, 0.0, 1.0);
+	cairo_pattern_add_color_stop_rgba (pat, 0.75,  0.15, 0.15, 0.15, 1.0);
+	cairo_pattern_add_color_stop_rgba (pat, 0.5,  0.2, 0.2, 0.2, 1.0);
+	cairo_pattern_add_color_stop_rgba (pat, 0.25,  0.15, 0.15, 0.15, 1.0);
+	cairo_pattern_add_color_stop_rgba (pat, 1,  0.0, 0.0, 0.0, 1.0);
+
+	cairo_arc(ui->crf,knobx1+arc_offset/2, knoby1+arc_offset/2, knob_x/2.1, 0, 2 * M_PI );
 	cairo_set_source (ui->crf, pat);
 	cairo_fill_preserve (ui->crf);
-	cairo_set_source_rgb (ui->crf, 0., 0., 0.);
-	cairo_set_line_width(ui->crf, 1.0);
+ 	cairo_set_source_rgb (ui->crf, 0.1, 0.1, 0.1); 
+	cairo_set_line_width(ui->crf,1);
 	cairo_stroke(ui->crf);
 	cairo_new_path (ui->crf);
 
-	cairo_arc(ui->crf,knobx1+arc_offset, knoby1+arc_offset, knob_x/3.1, 0, 2 * M_PI );
-	pat =
-	cairo_pattern_create_radial (knobx1+arc_offset-knob_x/6,knoby1+arc_offset-knob_x/6, 1,knobx1+arc_offset,knoby1+arc_offset,knob_x/2.1 );
-	if (knob->type == SWITCH) {
-		if (knobstate) {
-			cairo_pattern_add_color_stop_rgb (pat, 0, 0.2, 0.2, 0.2);
-			cairo_pattern_add_color_stop_rgb (pat, 0.7, 0.3, 0.3, 0.3);
-			cairo_pattern_add_color_stop_rgb (pat, 1, 0.2, 0.2,0.2);  
-		} else {
-			cairo_pattern_add_color_stop_rgb (pat, 0, 0.1, 0.1, 0.1);
-			cairo_pattern_add_color_stop_rgb (pat, 0.7, 0.2, 0.2, 0.2);
-			cairo_pattern_add_color_stop_rgb (pat, 1, 0.1, 0.1,0.1); 
-		}
-	} else if ( knob->type == ENUM) {
-		if (knobstate > 0.6) {
-			cairo_pattern_add_color_stop_rgb (pat, 0, 0.98, 0.98,0.98);
-			cairo_pattern_add_color_stop_rgb (pat, 0.7, 0.68, 0.68, 0.68);
-			cairo_pattern_add_color_stop_rgb (pat, 1, 0.98, 0.98,0.98);  
-		} else if (knobstate > 0.1) {
-			cairo_pattern_add_color_stop_rgb (pat, 0, 0.94, 0.94,0.94);
-			cairo_pattern_add_color_stop_rgb (pat, 0.7, 0.54, 0.54, 0.54);
-			cairo_pattern_add_color_stop_rgb (pat, 1, 0.94, 0.94,0.94);  
-		} else {
-			cairo_pattern_add_color_stop_rgb (pat, 0,  0.84, 0.84, 0.84);
-			cairo_pattern_add_color_stop_rgb (pat, 0.7, 0.42, 0.42, 0.42);
-			cairo_pattern_add_color_stop_rgb (pat, 1, 0.84, 0.84, 0.84); 
-		}
-	} else {
-		cairo_pattern_add_color_stop_rgb (pat, 0, 0.01, 0.01, 0.01);
-		cairo_pattern_add_color_stop_rgb (pat, 0.7, 0.28, 0.15, 0.08);
-		cairo_pattern_add_color_stop_rgb (pat, 1, 0.02, 0.02,0.02);
-	}
-
+	cairo_arc(ui->crf,knobx1+arc_offset/2, knoby1+arc_offset/2, knob_x/2.6, 0, 2 * M_PI );
 	cairo_set_source (ui->crf, pat);
 	cairo_fill_preserve (ui->crf);
-	cairo_set_source_rgb (ui->crf, 0.1, 0.1, 0.1);
-	cairo_set_line_width(ui->crf, 4.0);
-	cairo_stroke_preserve(ui->crf);
+ 	cairo_set_source_rgb (ui->crf, 0.15, 0.15, 0.15); 
+	cairo_set_line_width(ui->crf,1);
+	cairo_stroke(ui->crf);
 	cairo_new_path (ui->crf);
-	cairo_arc(ui->crf,knobx1+arc_offset, knoby1+arc_offset, knob_x/3.1, 0, 2 * M_PI );
-	cairo_set_source_rgb (ui->crf, 0., 0., 0.);
-	cairo_set_line_width(ui->crf, 1.0);
+
+	pat = cairo_pattern_create_radial (knobx1+arc_offset/2-10, knoby1+arc_offset/2-20,
+											  1,knobx1+arc_offset,knoby1+arc_offset,knob_x/2.4 );
+	pat = cairo_pattern_create_linear (0, 0, 0, knob_y);
+	cairo_pattern_add_color_stop_rgba (pat, 1,  0.0, 0.0, 0.0, 1.0);
+	cairo_pattern_add_color_stop_rgba (pat, 0.5,  0.15, 0.15, 0.15, 1.0);
+	cairo_pattern_add_color_stop_rgba (pat, 0.,  0.2, 0.2, 0.2, 1.0);
+
+	cairo_arc(ui->crf,knobx1+arc_offset/2, knoby1+arc_offset/2, knob_x/2.8, 0, 2 * M_PI );
+	cairo_set_source (ui->crf, pat);
+	cairo_fill_preserve (ui->crf);
+ 	cairo_set_source_rgb (ui->crf, 0.15, 0.15, 0.15); 
+	cairo_set_line_width(ui->crf,1);
 	cairo_stroke(ui->crf);
 	cairo_new_path (ui->crf);
 
@@ -444,7 +425,7 @@ static void knob_expose(gx_valvecasterUI *ui,gx_controller* knob) {
 	cairo_set_line_join(ui->crf, CAIRO_LINE_JOIN_BEVEL);
 	cairo_move_to(ui->crf, radius_x, radius_y);
 	cairo_line_to(ui->crf,lengh_x,lengh_y);
-	cairo_set_line_width(ui->crf,min(5, max(2,knob_x/30)));
+	cairo_set_line_width(ui->crf,4);
 	cairo_set_source_rgb (ui->crf,0.63,0.63,0.63);
 	cairo_stroke(ui->crf);
 	cairo_new_path (ui->crf);
@@ -521,10 +502,10 @@ static void bypass_expose(gx_valvecasterUI *ui, gx_controller* switch_) {
 	cairo_paint(ui->crf);
 	cairo_set_operator(ui->crf,CAIRO_OPERATOR_OVER);
 
-	cairo_set_source_surface (ui->crf, ui->pswitch, -61 * switch_->adj.value, 0);
+	cairo_set_source_surface (ui->crf, ui->pswitch, -81 * switch_->adj.value, 0);
 
 	//cairo_paint (ui->crf);
-	cairo_rectangle(ui->crf,0, 0, 61, 61);
+	cairo_rectangle(ui->crf,0, 0, 81, 81);
 	cairo_fill(ui->crf);
 	/** show label below the switch**/
 	cairo_text_extents_t extents;
@@ -539,7 +520,7 @@ static void bypass_expose(gx_valvecasterUI *ui, gx_controller* switch_) {
 							   CAIRO_FONT_WEIGHT_BOLD);
 	cairo_text_extents(ui->crf,switch_->label , &extents);
 
-	cairo_move_to (ui->crf, 30.0-extents.width/2, 67.0+extents.height);
+	cairo_move_to (ui->crf, 40.0-extents.width/2, 87.0+extents.height);
 	cairo_show_text(ui->crf, switch_->label);
 	cairo_new_path (ui->crf);
 }
@@ -552,25 +533,14 @@ static void draw_controller(gx_valvecasterUI *ui, gx_controller* controller) {
 
 // general XWindow expose callback, 
 static void _expose(gx_valvecasterUI *ui) {
-	static const char* plug_name = "GxValveCaster" ;
 	cairo_push_group (ui->cr);
 
 	cairo_scale (ui->cr, ui->rescale.x, ui->rescale.y);
 
 	cairo_set_source_surface (ui->cr, ui->pedal, 0, 0);
 	cairo_paint (ui->cr);
-
-	cairo_text_extents_t extents;
-	cairo_set_source_rgba (ui->cr, 0.6, 0.6, 0.6,0.6);
-	cairo_set_font_size (ui->cr, 16.0);
-	cairo_select_font_face (ui->cr, "Sans", CAIRO_FONT_SLANT_NORMAL,
-							   CAIRO_FONT_WEIGHT_BOLD);
-	cairo_text_extents(ui->cr, plug_name, &extents);
-	cairo_move_to (ui->cr, ((double)(ui->width/2.0)/ui->rescale.x-(extents.width)/2.0),
-	  (double)(ui->height-20.0)/ui->rescale.y-extents.height);
-	cairo_show_text(ui->cr, plug_name);
-
 	cairo_scale (ui->cr, ui->rescale.x1, ui->rescale.y1);
+
 	cairo_scale (ui->cr, ui->rescale.c, ui->rescale.c);
 
 	for (int i=0;i<CONTROLS;i++) {
@@ -628,7 +598,7 @@ static void resize_event(gx_valvecasterUI *ui) {
 	ui->rescale.y  = (double)ui->height/ui->init_height;
 	ui->rescale.x1 = (double)ui->init_width/ui->width;
 	ui->rescale.y1 = (double)ui->init_height/ui->height;
-	ui->rescale.xc = (double)ui->width/(ui->init_width-140 + (70 * CONTROLS));
+	ui->rescale.xc = (double)ui->width/ui->init_width;
 	ui->rescale.c = (ui->rescale.xc < ui->rescale.y) ? ui->rescale.xc : ui->rescale.y;
 	ui->rescale.x2 =  ui->rescale.xc / ui->rescale.c;
 	ui->rescale.y2 = ui->rescale.y / ui->rescale.c;
@@ -983,6 +953,7 @@ static void event_handler(gx_valvecasterUI *ui) {
 					default:
 					break;
 				}
+			break;
 
 			case EnterNotify:
 				if (!blocked) get_last_active_controller(ui, true);
