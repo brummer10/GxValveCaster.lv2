@@ -47,7 +47,7 @@
     lv2:project <http://guitarix.sourceforge.net/plugins/gx_valvecaster_> ;
     lv2:optionalFeature lv2:hardRTCapable ;
       
-    lv2:minorVersion 35;
+    lv2:minorVersion 37;
     lv2:microVersion 0;
 
     
