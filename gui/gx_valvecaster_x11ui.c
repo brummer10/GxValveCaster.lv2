@@ -496,6 +496,33 @@ static void knob_expose(gx_valvecasterUI *ui,gx_controller* knob) {
 	cairo_new_path (ui->crf);
 }
 
+static void draw_grid(gx_valvecasterUI *ui,double x0, double y0, double x1, double y1) {
+
+	cairo_pattern_t* pat = cairo_pattern_create_radial (300, 140,
+											  1,300,140,140 );
+	if (ui->controls[0].adj.value > 0.9) {
+		cairo_pattern_add_color_stop_rgba (pat, 1,  0.1*ui->controls[0].adj.value, 0.0, 0.0, 1.0);
+		cairo_pattern_add_color_stop_rgba (pat, 0.5,  0.15, 0.15,0.15+ (0.1*ui->controls[0].adj.value), 1.0);
+		cairo_pattern_add_color_stop_rgba (pat, 0,  0.0, 0.0, 0.0 + (0.3*ui->controls[0].adj.value), 1.0);
+	} else {
+		cairo_pattern_add_color_stop_rgba (pat, 1,  0.0, 0.0, 0.0, 1.0);
+	}
+
+	cairo_set_line_cap(ui->cr, CAIRO_LINE_CAP_ROUND);
+	cairo_set_line_join(ui->cr, CAIRO_LINE_JOIN_BEVEL);
+	//cairo_set_source_rgba (cr, 0.0, 0.0, 0.0, 0.4);
+	cairo_set_source (ui->cr, pat);
+	cairo_set_line_width (ui->cr, 6.0);
+	for (int i=x0+5; i<=x1; i+=20)
+	{
+		cairo_move_to (ui->cr, i, y0);
+		cairo_line_to (ui->cr, i, y1);
+	}
+	cairo_stroke (ui->cr);
+	cairo_pattern_destroy (pat);
+
+}
+
 // draw the power switch (bypass)
 static void bypass_expose(gx_valvecasterUI *ui, gx_controller* switch_) {
 	cairo_set_operator(ui->crf,CAIRO_OPERATOR_CLEAR);
@@ -523,6 +550,13 @@ static void bypass_expose(gx_valvecasterUI *ui, gx_controller* switch_) {
 	cairo_move_to (ui->crf, 40.0-extents.width/2, 87.0+extents.height);
 	cairo_show_text(ui->crf, switch_->label);
 	cairo_new_path (ui->crf);
+
+	cairo_scale (ui->cr, 1.0/ui->rescale.c, 1.0/ui->rescale.c);
+	cairo_scale (ui->cr, ui->rescale.x, ui->rescale.y);
+	draw_grid(ui,160,58,320,140);
+	cairo_scale (ui->cr, ui->rescale.x1, ui->rescale.y1);
+	cairo_scale (ui->cr, ui->rescale.c, ui->rescale.c);
+
 }
 
 // select draw methode by controller type
@@ -536,13 +570,11 @@ static void _expose(gx_valvecasterUI *ui) {
 	cairo_push_group (ui->cr);
 
 	cairo_scale (ui->cr, ui->rescale.x, ui->rescale.y);
-
 	cairo_set_source_surface (ui->cr, ui->pedal, 0, 0);
 	cairo_paint (ui->cr);
 	cairo_scale (ui->cr, ui->rescale.x1, ui->rescale.y1);
 
 	cairo_scale (ui->cr, ui->rescale.c, ui->rescale.c);
-
 	for (int i=0;i<CONTROLS;i++) {
 		draw_controller(ui, &ui->controls[i]);
 		cairo_set_source_surface (ui->cr, ui->frame, 
@@ -558,11 +590,11 @@ static void _expose(gx_valvecasterUI *ui) {
 // redraw a single controller
 static void controller_expose(gx_valvecasterUI *ui, gx_controller * control) {
 	cairo_push_group (ui->cr);
+
 	cairo_scale (ui->cr, ui->rescale.x, ui->rescale.y);
-
 	cairo_set_source_surface (ui->cr, ui->pedal, 0, 0);
-
 	cairo_scale (ui->cr, ui->rescale.x1, ui->rescale.y1);
+
 	cairo_scale (ui->cr, ui->rescale.c, ui->rescale.c);
 	cairo_rectangle (ui->cr,(double)control->al.x * ui->rescale.x2,
 	  (double)control->al.y * ui->rescale.y2,
