@@ -102,8 +102,8 @@ dist-clean :
 install :
 ifneq ("$(wildcard ./$(BUNDLE))","")
 	@mkdir -p $(DESTDIR)$(INSTALL_DIR)/$(BUNDLE)
-	cp -r ./$(BUNDLE)/* $(DESTDIR)$(INSTALL_DIR)/$(BUNDLE)
-	@$(ECHO) ". ." $(BLUE)", done"$(NONE)
+	@cp -r ./$(BUNDLE)/* $(DESTDIR)$(INSTALL_DIR)/$(BUNDLE)
+	@$(ECHO) ". ." $(BLUE)"successfully installed to $(INSTALL_DIR)/$(BUNDLE)"$(NONE)
 else
 	@$(ECHO) ". ." $(BLUE)", you must build first"$(NONE)
 endif
