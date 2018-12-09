@@ -191,7 +191,7 @@ Gx_valvecaster_::Gx_valvecaster_() :
   valvecaster(valvecaster::plugin()),
   valvecasterbuster(valvecasterbuster::plugin()),
   bypass(0),
-  bypass_(0),
+  bypass_(2),
   boost(0),
   boost_(0),
   needs_ramp_down(false),
