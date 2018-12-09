@@ -36,6 +36,7 @@ typedef enum
    GAIN, 
    TONE, 
    VOLUME,
+   BOOST,
 } PortIndex;
 
 #endif //SRC_HEADERS_GXEFFECTS_H_

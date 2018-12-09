@@ -2,12 +2,32 @@
     <div mod-role="drag-handle" class="mod-drag-handle"></div>
     <div class="mod-light on" mod-role="bypass-light"></div>
     <div class="mod-control-group mod-{{knob}} clearfix">
-        {{#controls}}
+        {{#controls.0}}
         <div class="mod-knob" title="{{comment}}">
             <div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>
             <span class="mod-knob-title">{{name}}</span>
         </div>
-        {{/controls}}
+        {{/controls.0}}
+        {{#controls.1}}
+        <div class="mod-knob" title="{{comment}}">
+            <div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>
+            <span class="mod-knob-title">{{name}}</span>
+        </div>
+        {{/controls.1}}
+        {{#controls.2}}
+        <div class="mod-knob" title="{{comment}}">
+            <div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>
+            <span class="mod-knob-title">{{name}}</span>
+        </div>
+        {{/controls.2}}
+    </div>
+    <div class="mod-control-group mod-{{knob}} bottom clearfix">
+        {{#controls.3}}
+        <div class="mod-knob-trim" title="{{comment}}">
+            <div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>
+             <span class="mod-knob-title">{{name}}</span>
+       </div>
+        {{/controls.3}}
     </div>
     <div class="mod-footswitch" mod-role="bypass"></div>
     <div class="mod-pedal-input">

@@ -24,7 +24,7 @@
 -----------------------------------------------------------------------
 ----------------------------------------------------------------------*/
 
-#define CONTROLS 4
+#define CONTROLS 5
 
 /*---------------------------------------------------------------------
 -----------------------------------------------------------------------	
@@ -262,8 +262,9 @@ static LV2UI_Handle instantiate(const struct _LV2UI_Descriptor * descriptor,
 
 	ui->controls[0] = (gx_controller) {{1.0, 1.0, 0.0, 1.0, 1.0}, {40, 70, 81, 81}, false,"POWER", BSWITCH, BYPASS};
 	ui->controls[1] = (gx_controller) {{0.5, 0.5, 0.0, 1.0, 0.01}, {350, 70, 81, 81}, false,"GAIN", KNOB, GAIN};
-	ui->controls[2] = (gx_controller) {{0.5, 0.5, 0.0, 1.0, 0.01}, {480, 70, 81, 81}, false,"TONE", KNOB, TONE};
-	ui->controls[3] = (gx_controller) {{0.5, 0.5, 0.0, 1, 0.01}, {610, 70, 81, 81}, false,"VOLUME", KNOB, VOLUME};
+	ui->controls[2] = (gx_controller) {{0.5, 0.5, 0.0, 1.0, 0.01}, {470, 70, 81, 81}, false,"TONE", KNOB, TONE};
+	ui->controls[3] = (gx_controller) {{0.5, 0.5, 0.0, 1.0, 0.01}, {590, 70, 81, 81}, false,"VOLUME", KNOB, VOLUME};
+	ui->controls[4] = (gx_controller) {{0.0, 0.0, 0.0, 1.0, 1.0}, {680, 70, 81, 81}, false,"BOOST", SWITCH, BOOST};
 	ui->start_value = 0.0;
 
 	ui->pedal = cairo_image_surface_create_from_stream(ui, LDVAR(pedal_png));
@@ -352,8 +353,8 @@ static void knob_expose(gx_valvecasterUI *ui,gx_controller* knob) {
 	int h = cairo_image_surface_get_height(ui->frame)-20;
 	int grow = (w > h) ? h:w;
 	if (knob->type == SWITCH) {
-		knob_x = grow-25;
-		knob_y = grow-25; 
+		knob_x = grow-45;
+		knob_y = grow-45; 
 	} else if (knob->type == ENUM) {
 		knob_x = grow-25;
 		knob_y = grow-25; 
@@ -451,14 +452,21 @@ static void knob_expose(gx_valvecasterUI *ui,gx_controller* knob) {
 		cairo_show_text(ui->crf, s);
 		cairo_new_path (ui->crf);
 	} else if (knob->type == SWITCH) {
-		cairo_set_source_rgba (ui->crf, 0.0, 0.0, 0.0,1.0);
+		if(knob->adj.value)
+		cairo_set_source_rgba (ui->crf, 0.6, 0.6, 0.6,1.0);
+		else
+		cairo_set_source_rgba (ui->crf, 0.73, 0.73, 0.73,1.0);
 		cairo_text_extents(ui->crf,"Off", &extents);
-		cairo_move_to (ui->crf, knobx1-knob_x/2.4-extents.width/1.6, knoby1+knob_y/2+extents.height/1.4);
+		cairo_move_to (ui->crf, knobx1-knob_x/2.4-extents.width/1.6, knoby1+knob_y/1.4+extents.height/1.4);
 		cairo_show_text(ui->crf, "Off");
 		cairo_new_path (ui->crf);
 
+		if(!knob->adj.value)
+		cairo_set_source_rgba (ui->crf, 0.6, 0.6, 0.6,1.0);
+		else
+		cairo_set_source_rgba (ui->crf, 0.73, 0.73, 0.73,1.0);
 		cairo_text_extents(ui->crf,"On", &extents);
-		cairo_move_to (ui->crf, knobx1+knob_x/2.6-extents.width/2.3, knoby1+knob_y/2+extents.height/1.4);
+		cairo_move_to (ui->crf, knobx1+knob_x/2.6-extents.width/2.3, knoby1+knob_y/1.4+extents.height/1.4);
 		cairo_show_text(ui->crf, "On");
 		cairo_new_path (ui->crf);
 	} else if (knob->type == ENUM) {
@@ -496,7 +504,12 @@ static void knob_expose(gx_valvecasterUI *ui,gx_controller* knob) {
 	cairo_new_path (ui->crf);
 }
 
-static void draw_grid(gx_valvecasterUI *ui,double x0, double y0, double x1, double y1) {
+static void draw_grid(gx_valvecasterUI *ui) {
+
+	static const double x0 = 160.0;
+	static const double y0 = 58.0;
+	static const double x1 = 320.0;
+	static const double y1 = 140.0;
 
 	cairo_pattern_t* pat = cairo_pattern_create_radial (300, 140,
 											  1,300,140,140 );
@@ -553,7 +566,7 @@ static void bypass_expose(gx_valvecasterUI *ui, gx_controller* switch_) {
 
 	cairo_scale (ui->cr, 1.0/ui->rescale.c, 1.0/ui->rescale.c);
 	cairo_scale (ui->cr, ui->rescale.x, ui->rescale.y);
-	draw_grid(ui,160,58,320,140);
+	draw_grid(ui);
 	cairo_scale (ui->cr, ui->rescale.x1, ui->rescale.y1);
 	cairo_scale (ui->cr, ui->rescale.c, ui->rescale.c);
 

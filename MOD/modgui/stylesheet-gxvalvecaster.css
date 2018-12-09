@@ -79,10 +79,17 @@
     margin-top:0px !important;
 }
 
+.mod-pedal-boxy{{{cns}}} .bottom {
+    top:25px !important;
+    margin:150px !important;
+}
+
+.mod-pedal-boxy{{{cns}}} .mod-control-group .mod-knob-trim,
 .mod-pedal-boxy{{{cns}}} .mod-control-group .mod-knob {
     overflow:hidden;
     position:relative;
 }
+
 
 .mod-pedal-boxy{{{cns}}} .mod-control-group .mod-knob > span.mod-knob-title {
     bottom:0px;
@@ -100,18 +107,49 @@
     text-transform:uppercase;
 }
 
+.mod-pedal-boxy{{{cns}}} .mod-control-group .mod-knob-trim > span.mod-knob-title {
+    bottom:0px;
+    display:block;
+    font-size:9px;
+    font-weight:bold;
+    height:12px;
+    left:0;
+    line-height:1;
+    margin:0;
+    overflow:hidden;
+    padding:0;
+    position:absolute;
+    right:0;
+    text-transform:uppercase;
+}
+
 /* THREE AND HIGHER KNOBS */
 .mod-pedal-boxy{{{cns}}}.mod-three-knobs .mod-control-group .mod-knob .mod-knob-image {
-    background-image:url(/resources/knobs/lata/lata.png{{{ns}}});
+    background-image:url(/resources/knobs/boxy/knob_1.png{{{ns}}});
     background-repeat:no-repeat;
     background-size:auto 60px;
     height:60px;
     width:60px;
     margin:0 auto;
 }
+
+.mod-pedal-boxy{{{cns}}}.mod-three-knobs .mod-control-group .mod-knob-trim .mod-knob-image {
+    background-image:url(/resources/knobs/boxy/knob_2.png{{{ns}}});
+    background-repeat:no-repeat;
+    background-size:auto 60px;
+    height:60px;
+    width:60px;
+    margin:0 auto;
+}
+
 .mod-pedal-boxy{{{cns}}}.mod-three-knobs .mod-control-group .mod-knob {
     display:inline-block;
     height:73px;
+}
+
+.mod-pedal-boxy{{{cns}}}.mod-three-knobs .mod-control-group .mod-knob-trim {
+    display:inline-block;
+    height:70px;
 }
 
 
@@ -126,6 +164,7 @@
 /* = COLORS - Color of the pedals labels
 ================================================ */
 
+.mod-pedal-boxy{{{cns}}}.mod-black .mod-control-group .mod-knob-trim > span.mod-knob-title,
 .mod-pedal-boxy{{{cns}}}.mod-black .mod-control-group .mod-knob > span.mod-knob-title
 {
     color:white;
@@ -136,6 +175,11 @@
 
 /* = KNOBS
 ================================================ */
+
 .mod-pedal-boxy{{{cns}}} .mod-control-group.mod-black .mod-knob .mod-knob-image {
     background-image:url(/resources/knobs/boxy/knob_1.png{{{ns}}});
+}
+
+.mod-pedal-boxy{{{cns}}} .mod-control-group.mod-cairo .mod-knob-trim .mod-knob-image {
+    background-image:url(/resources/knobs/boxy/knob_2.png{{{ns}}});
 }

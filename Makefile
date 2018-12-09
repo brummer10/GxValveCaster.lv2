@@ -48,7 +48,7 @@
 	BLUE = "\033[1;34m"
 	RED =  "\033[1;31m"
 	NONE = "\033[0m"
-	ECHO = echo -e
+	ECHO = /bin/echo -e
 
 .PHONY : mod all clean install uninstall
 
