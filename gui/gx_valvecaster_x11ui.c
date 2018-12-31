@@ -167,6 +167,8 @@ typedef struct {
 	Visual *visual;
 	long event_mask;
 	Atom DrawController;
+	bool first_resize;
+	bool blocked;
 
 	int width;
 	int height;
@@ -186,6 +188,8 @@ typedef struct {
 	gx_controller controls[CONTROLS];
 	double start_value;
 	gx_scale rescale;
+	gx_controller *sc;
+	int set_sc;
 
 	void *controller;
 	LV2UI_Write_Function write_function;
@@ -266,6 +270,8 @@ static LV2UI_Handle instantiate(const struct _LV2UI_Descriptor * descriptor,
 	ui->controls[3] = (gx_controller) {{0.5, 0.5, 0.0, 1.0, 0.01}, {590, 70, 81, 81}, false,"VOLUME", KNOB, VOLUME};
 	ui->controls[4] = (gx_controller) {{0.0, 0.0, 0.0, 1.0, 1.0}, {680, 70, 81, 81}, false,"BOOST", SWITCH, BOOST};
 	ui->start_value = 0.0;
+	ui->sc = NULL;
+	ui->set_sc = 0;
 
 	ui->pedal = cairo_image_surface_create_from_stream(ui, LDVAR(pedal_png));
 	ui->init_width = cairo_image_surface_get_width(ui->pedal);
@@ -286,15 +292,11 @@ static LV2UI_Handle instantiate(const struct _LV2UI_Descriptor * descriptor,
 
 	XSizeHints* win_size_hints;
 	win_size_hints = XAllocSizeHints();
-	win_size_hints->flags = PSize | PMinSize | PAspect;
+	win_size_hints->flags = PBaseSize | PMinSize;
 	win_size_hints->min_width = ui->width/1.4;
 	win_size_hints->min_height = ui->height/1.4;
 	win_size_hints->base_width = ui->width;
 	win_size_hints->base_height = ui->height;
-	win_size_hints->min_aspect.x=4;
-	win_size_hints->max_aspect.x=win_size_hints->min_aspect.x;
-	win_size_hints->min_aspect.y=1;
-	win_size_hints->max_aspect.y=win_size_hints->min_aspect.y;
 	XSetWMNormalHints(ui->dpy, ui->win, win_size_hints);
 	XFree(win_size_hints);
 
@@ -313,9 +315,12 @@ static LV2UI_Handle instantiate(const struct _LV2UI_Descriptor * descriptor,
 
 	*widget = (void*)ui->win;
 
+	ui->first_resize = false;
+	ui->blocked = false;
 	if (resize){
 		ui->resize = resize;
 		resize->ui_resize(resize->handle, ui->width, ui->height);
+		ui->first_resize = true;
 	}
 
 	ui->rescale.x  = (double)ui->width/ui->init_width;
@@ -361,7 +366,7 @@ static void knob_expose(const gx_valvecasterUI * const ui, const gx_controller *
 	cairo_set_operator(ui->crf,CAIRO_OPERATOR_CLEAR);
 	cairo_paint(ui->crf);
 	cairo_set_operator(ui->crf,CAIRO_OPERATOR_OVER);
-	static const double scale_zero = 20 * (M_PI/180); // defines "dead zone" for knobs
+	const double scale_zero = 20 * (M_PI/180); // defines "dead zone" for knobs
 	int arc_offset = 0;
 	int knob_x = 0;
 	int knob_y = 0;
@@ -522,10 +527,10 @@ static void knob_expose(const gx_valvecasterUI * const ui, const gx_controller *
 
 static void draw_grid(const gx_valvecasterUI * const ui) {
 
-	static const double x0 = 160.0;
-	static const double y0 = 58.0;
-	static const double x1 = 320.0;
-	static const double y1 = 140.0;
+	const double x0 = 160.0;
+	const double y0 = 58.0;
+	const double x1 = 320.0;
+	const double y1 = 140.0;
 
 	cairo_pattern_t* pat = cairo_pattern_create_radial (300, 140,
 											  1,300,140,140 );
@@ -560,7 +565,6 @@ static void bypass_expose(const gx_valvecasterUI * const ui,  const gx_controlle
 
 	cairo_set_source_surface (ui->crf, ui->pswitch, -80 * switch_->adj.value, 0);
 
-	//cairo_paint (ui->crf);
 	cairo_rectangle(ui->crf,0, 0, 81, 81);
 	cairo_fill(ui->crf);
 	/** show label below the switch**/
@@ -647,6 +651,12 @@ static void controller_expose(const gx_valvecasterUI * const ui,  const gx_contr
 -----------------------------------------------------------------------
 ----------------------------------------------------------------------*/
 
+// hack to allow resizing below the initial size on gtk based hosts
+static void reset_request(gx_valvecasterUI * const ui) {
+	ui->resize->ui_resize(ui->resize->handle, ui->width/1.4, ui->height/1.4);
+	ui->first_resize = false;
+}
+
 // resize the xwindow and the cairo xlib surface
 static void resize_event(gx_valvecasterUI * const ui) {
 	XWindowAttributes attrs;
@@ -709,8 +719,7 @@ static bool aligned(int x, int y, const gx_controller * const control, const gx_
 
 // get controller number under mouse pointer and make it active, or return false
 static bool get_active_ctl_num(gx_valvecasterUI * const ui, int *num) {
-	static bool ret;
-	ret = false;
+	bool ret = false;
 	for (int i=0;i<CONTROLS;i++) {
 		if (aligned(ui->pos_x, ui->pos_y, &ui->controls[i], ui)) {
 			*(num) = i;
@@ -785,7 +794,7 @@ static void button1_event(gx_valvecasterUI * const ui, double* start_value) {
 
 // mouse move while left button is pressed
 static void motion_event(gx_valvecasterUI * const ui, double start_value, int m_y) {
-	static const double scaling = 0.5;
+	const double scaling = 0.5;
 	float value = 0.0;
 	int num;
 	debug_print("motion_event \n");
@@ -876,21 +885,19 @@ static void set_next_controller_active(gx_valvecasterUI * const ui) {
 
 // get/set active controller on enter and leave notify
 static void get_last_active_controller(gx_valvecasterUI * const ui, bool set) {
-	static gx_controller *sc = NULL;
-	static int s = 0;
 	int num;
 	if (get_active_controller_num(ui, &num)) {
-		sc = &ui->controls[num];
-		s = num;
+		ui->sc = &ui->controls[num];
+		ui->set_sc = num;
 		ui->controls[num].is_active = set;
 		send_controller_event(ui, num);
 		return;
 	} else if (!set) {
-		sc =  NULL;
+		ui->sc =  NULL;
 	}
-	if (sc != NULL) {
-		sc->is_active = true;
-		send_controller_event(ui, s);
+	if (ui->sc != NULL) {
+		ui->sc->is_active = true;
+		send_controller_event(ui, ui->set_sc);
 	}
 }
 
@@ -939,7 +946,6 @@ static int key_mapping(Display *dpy, const XKeyEvent * const xkey) {
 // general xevent handler
 static void event_handler(gx_valvecasterUI * const ui) {
 	XEvent xev;
-	static bool blocked = false;
 
 	while (XPending(ui->dpy) > 0) {
 		XNextEvent(ui->dpy, &xev);
@@ -951,8 +957,9 @@ static void event_handler(gx_valvecasterUI * const ui) {
 			break;
 			case Expose:
 				// only fetch the last expose event
-				if (xev.xexpose.count == 0) 
+				if (xev.xexpose.count == 0) {
 					_expose(ui);
+				}
 			break;
 
 			case ButtonPress:
@@ -963,13 +970,14 @@ static void event_handler(gx_valvecasterUI * const ui) {
 				switch(xev.xbutton.button) {
 					case Button1:
 						if (xev.xbutton.type == ButtonPress) {
-							blocked = true;
+							ui->blocked = true;
 						}
 						// left mouse button click
 						button1_event(ui, &ui->start_value);
 					break;
 					case Button2:
 						// click on the mouse wheel
+						if (ui->first_resize) reset_request(ui);
 						//debug_print("Button2 \n");
 					break;
 					case Button3:
@@ -990,7 +998,7 @@ static void event_handler(gx_valvecasterUI * const ui) {
 			break;
 			case ButtonRelease:
 				if (xev.xbutton.type == ButtonRelease) {
-					blocked = false;
+					ui->blocked = false;
 				}
 			break;
 
@@ -1017,10 +1025,10 @@ static void event_handler(gx_valvecasterUI * const ui) {
 			break;
 
 			case EnterNotify:
-				if (!blocked) get_last_active_controller(ui, true);
+				if (!ui->blocked) get_last_active_controller(ui, true);
 			break;
 			case LeaveNotify:
-				if (!blocked) get_last_active_controller(ui, false);
+				if (!ui->blocked) get_last_active_controller(ui, false);
 			break;
 			case MotionNotify:
 				// mouse move while button1 is pressed
