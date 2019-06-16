@@ -9,7 +9,7 @@ The ValveCaster is a little tube boost pedal simulation. It adds some overdrive 
 |   Command       |     |   Action                      |
 |-----------------|:---:|-------------------------------|
 |TAB              |==   |make next controller active    |
-|SHIFT+TAB        |==   |make previus controller active |
+|SHIFT+TAB        |==   |make previous controller active|
 |UP or RIGHT      |==   |increase controller value      |
 |DOWN or LEFT     |==   |decrease controller value      |
 |HOME (pos1)      |==   |set min controller value       |
@@ -21,7 +21,7 @@ The ValveCaster is a little tube boost pedal simulation. It adds some overdrive 
 |   Command       |     |   Action                      |
 |-----------------|:---:|-------------------------------|
 |+                |==   |make next controller active    |
-|-                |==   |make previus controller active |
+|-                |==   |make previous controller active|
 |UP or RIGHT      |==   |increase controller value      |
 |DOWN or LEFT     |==   |decrease controller value      |
 |HOME (pos1)      |==   |set min controller value       |
