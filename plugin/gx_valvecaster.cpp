@@ -159,6 +159,13 @@ private:
   float           ramp_down_step;
   bool            bypassed;
 
+  // boost ramping
+  bool            needs_boost_down;
+  bool            needs_boost_up;
+  float           boost_down;
+  float           boost_up;
+  bool            boost_is;
+
   // private functions
   inline void run_dsp_(uint32_t n_samples);
   inline void connect_(uint32_t port,void* data);
@@ -193,10 +200,13 @@ Gx_valvecaster_::Gx_valvecaster_() :
   bypass(0),
   bypass_(2),
   boost(0),
-  boost_(0),
+  boost_(2),
   needs_ramp_down(false),
   needs_ramp_up(false),
-  bypassed(false) {};
+  bypassed(false),
+  needs_boost_down(false),
+  needs_boost_up(false),
+  boost_is(false) {};
 
 // destructor
 Gx_valvecaster_::~Gx_valvecaster_()
@@ -228,6 +238,8 @@ void Gx_valvecaster_::init_dsp_(uint32_t rate)
   ramp_up_step = ramp_down_step;
   ramp_down = ramp_down_step;
   ramp_up = 0.0;
+  boost_down = ramp_down_step;
+  boost_up = 0.0;
 
   valvecaster->set_samplerate(rate, valvecaster); // init the DSP class
   valvecasterbuster->set_samplerate(rate, valvecasterbuster); // init the DSP class
@@ -294,26 +306,101 @@ void Gx_valvecaster_::run_dsp_(uint32_t n_samples)
   } else {
     memcpy(buf, input, n_samples*sizeof(float));
   }
+  FAUSTFLOAT buf1[ReCount];
+  if (fact>1) {
+     smp.down(ReCount, input, buf1);
+  } else {
+    memcpy(buf1, input, n_samples*sizeof(float));
+  }
   // do inplace processing at default
   // check if booster is enabled
   if (boost_ != static_cast<uint32_t>(*(boost))) {
     boost_ = static_cast<uint32_t>(*(boost));
+    if (boost_) {
+      needs_boost_up = true;
+      needs_boost_down = false;
+    } else {
+      needs_boost_down = true;
+      needs_boost_up = false;
+    }
   }
   // check if bypass is pressed
   if (bypass_ != static_cast<uint32_t>(*(bypass))) {
     bypass_ = static_cast<uint32_t>(*(bypass));
-    ramp_down = ramp_down_step;
-    ramp_up = 0.0;    
-    if (!bypass_) needs_ramp_down = true;
-    else needs_ramp_up = true;
+    // ramp_down = ramp_down_step;
+    // ramp_up = 0.0;
+    if (!bypass_) {
+      needs_ramp_down = true;
+      needs_ramp_up = false;
+    } else {
+      needs_ramp_up = true;
+      needs_ramp_down = false;
+    }  
   }
-  // check if raming is needed
+  if (!bypassed) {
+    if (boost_is) valvecasterbuster->mono_audio(static_cast<int>(ReCount), buf, buf, valvecasterbuster);
+
+    if (needs_boost_down) {
+      float fade = 0;
+      for (uint32_t i=0; i<ReCount; i++) {
+        if (boost_down >= 0.0) {
+          --boost_down; 
+        }
+        fade = max(0.0,boost_down) /ramp_down_step ;
+        buf[i] = buf[i] * fade + buf1[i] * (1.0 - fade);
+      }
+
+      if (boost_down <= 0.0) {
+        // when ramped down, clear buffer from valvecasterbuster class
+        valvecasterbuster->clear_state(valvecasterbuster);
+        needs_boost_down = false;
+        boost_is = false;
+        boost_down = ramp_down_step;
+        boost_up = 0.0;
+      } else {
+        boost_up = boost_down;
+      }
+
+    } else if (needs_boost_up) {
+      boost_is = true;
+      float fade = 0;
+      for (uint32_t i=0; i<ReCount; i++) {
+        if (boost_up < ramp_up_step) {
+          ++boost_up ;
+        }
+        fade = min(8192.0,boost_up) /ramp_up_step ;
+        buf[i] = buf[i] * fade + buf1[i] * (1.0 - fade);
+      }
+
+      if (boost_up >= ramp_up_step) {
+        needs_boost_up = false;
+        boost_up = 0.0;
+        boost_down = ramp_down_step;
+      } else {
+        boost_down = boost_up;
+      }
+    }
+
+    valvecaster->mono_audio(static_cast<int>(ReCount), buf, buf, valvecaster);
+
+  }
+  // check if ramping is needed
   if (needs_ramp_down) {
+
+    FAUSTFLOAT buf2[ReCount];
+    if (fact>1) {
+       smp.down(ReCount, input, buf2);
+    } else {
+      memcpy(buf2, input, n_samples*sizeof(float));
+    }
+
+    float fade = 0;
     for (uint32_t i=0; i<ReCount; i++) {
       if (ramp_down >= 0.0) {
-        --ramp_down;
+        --ramp_down; 
       }
-      buf[i] *= ramp_down /ramp_down_step ;
+      fade = max(0.0,ramp_down) /ramp_down_step ;
+      buf[i] = buf[i] * fade + buf2[i] * (1.0 - fade);
     }
 
     if (ramp_down <= 0.0) {
@@ -322,26 +409,40 @@ void Gx_valvecaster_::run_dsp_(uint32_t n_samples)
       valvecasterbuster->clear_state(valvecasterbuster);
       needs_ramp_down = false;
       bypassed = true;
-      //needs_ramp_up = true;
-      //ramp_down = ramp_down_step;
+      ramp_down = ramp_down_step;
+      ramp_up = 0.0;
+    } else {
+      ramp_up = ramp_down;
     }
+
   } else if (needs_ramp_up) {
+
     bypassed = false;
-    for (uint32_t i=0; i<ReCount; i++) {
-      if (ramp_up <= ramp_up_step) {
-        ++ramp_up;
-      }
-      buf[i] *= ramp_up /ramp_up_step;
+    FAUSTFLOAT buf2[ReCount];
+    if (fact>1) {
+       smp.down(ReCount, input, buf2);
+    } else {
+      memcpy(buf2, input, n_samples*sizeof(float));
     }
+
+    float fade = 0;
+    for (uint32_t i=0; i<ReCount; i++) {
+      if (ramp_up < ramp_up_step) {
+        ++ramp_up ;
+      }
+      fade = min(8192.0,ramp_up) /ramp_up_step ;
+      buf[i] = buf[i] * fade + buf2[i] * (1.0 - fade);
+    }
+
     if (ramp_up >= ramp_up_step) {
       needs_ramp_up = false;
-     //ramp_up = 0.0;
+      ramp_up = 0.0;
+      ramp_down = ramp_down_step;
+    } else {
+      ramp_down = ramp_up;
     }
   }
-  if (!bypassed) {
-    if (boost_) valvecasterbuster->mono_audio(static_cast<int>(ReCount), buf, buf, valvecasterbuster);
-    valvecaster->mono_audio(static_cast<int>(ReCount), buf, buf, valvecaster);
-  }
+
   if (fact>1) {
     smp.up(ReCount, buf, output);
   } else {

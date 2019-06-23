@@ -474,18 +474,18 @@ static void knob_expose(const gx_valvecasterUI * const ui, const gx_controller *
 		cairo_new_path (ui->crf);
 	} else if (knob->type == SWITCH) {
 		if(knob->adj.value)
-		cairo_set_source_rgba (ui->crf, 0.6, 0.6, 0.6, 0.6);
+			cairo_set_source_rgba (ui->crf, 0.6, 0.6, 0.6, 0.6);
 		else
-		cairo_set_source_rgba (ui->crf, 0.8, 0.8, 0.8, 0.8);
+			cairo_set_source_rgba (ui->crf, 0.8, 0.8, 0.8, 0.8);
 		cairo_text_extents(ui->crf,"Off", &extents);
 		cairo_move_to (ui->crf, knobx1-knob_x/2.4-extents.width/1.6, knoby1+knob_y/1.4+extents.height/1.4);
 		cairo_show_text(ui->crf, "Off");
 		cairo_new_path (ui->crf);
 
 		if(!knob->adj.value)
-		cairo_set_source_rgba (ui->crf, 0.6, 0.6, 0.6, 0.6);
+			cairo_set_source_rgba (ui->crf, 0.6, 0.6, 0.6, 0.6);
 		else
-		cairo_set_source_rgba (ui->crf, 0.8, 0.8, 0.8, 0.8);
+			cairo_set_source_rgba (ui->crf, 0.8, 0.8, 0.8, 0.8);
 		cairo_text_extents(ui->crf,"On", &extents);
 		cairo_move_to (ui->crf, knobx1+knob_x/2.6-extents.width/2.3, knoby1+knob_y/1.4+extents.height/1.4);
 		cairo_show_text(ui->crf, "On");
@@ -547,8 +547,7 @@ static void draw_grid(const gx_valvecasterUI * const ui) {
 	//cairo_set_source_rgba (cr, 0.0, 0.0, 0.0, 0.4);
 	cairo_set_source (ui->cr, pat);
 	cairo_set_line_width (ui->cr, 6.0);
-	for (int i=x0+5; i<=x1; i+=20)
-	{
+	for (int i=x0+5; i<=x1; i+=20) {
 		cairo_move_to (ui->cr, i, y0);
 		cairo_line_to (ui->cr, i, y1);
 	}

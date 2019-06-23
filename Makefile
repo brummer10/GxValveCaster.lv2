@@ -36,10 +36,10 @@
 	# set compile flags
 	CXXFLAGS += -I. -I./dsp -I./plugin -I./dsp/zita-resampler-1.1.0 -I./dsp/zita-resampler-1.1.0/zita-resampler \
 	 -fPIC -DPIC -O2 -Wall -funroll-loops -ffast-math -fomit-frame-pointer -fstrength-reduce \
-	 -fdata-sections -Wl,--gc-sections $(SSE_CFLAGS)
+	 -fdata-sections -Wl,--gc-sections -Wl,-z,relro,-z,now $(SSE_CFLAGS)
 	DEBUGFLAGS += -I. -I./dsp -I./plugin -fPIC -DPIC -O2 -Wall -D DEBUG
-	LDFLAGS += -I. -shared -lm
-	GUI_LDFLAGS += -I./gui -shared -lm `pkg-config --cflags --libs cairo` -L/usr/X11/lib -lX11
+	LDFLAGS += -I. -shared -lm -Wl,-z,noexecstack
+	GUI_LDFLAGS += -I./gui -shared -Wl,-z,noexecstack -lm `pkg-config --cflags --libs cairo` -L/usr/X11/lib -lX11
 	# invoke build files
 	OBJECTS = plugin/$(NAME).cpp
 	GUI_OBJECTS = gui/$(NAME)_x11ui.c
