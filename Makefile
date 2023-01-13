@@ -1,5 +1,7 @@
 
+	ECHO ?= echo
 	STRIP ?= strip
+	PKGCONFIG ?= pkg-config
 	# check if user is root
 	user = $(shell whoami)
 	ifeq ($(user),root)
@@ -33,46 +35,98 @@
 	NAME = gx_valvecaster
 	BUNDLE = $(NAME).lv2
 	VER = 0.1
+	# check OS specific stuff
+	OS := $(shell echo $$OS)
+	UNAME_S := $(shell uname -s)
+	GUI_PLATFORM_DIR = ./gui
+	# cross compilation (e.g.: PKG_CONFIG_PATH=/usr/local/pkgconfig make CROSS=x86_64-w64-mingw32- mod)
+	ifneq (,$(findstring mingw,$(CROSS)))
+		# Found
+		TARGET = Windows
+		STRIP = $(CROSS)strip
+		PKGCONFIG = $(CROSS)pkg-config
+		CC = $(CROSS)cc
+		CXX = $(CROSS)g++
+		LD = $(CROSS)ld
+	else
+		# Not found
+		ifeq ($(UNAME_S), Linux) #LINUX
+			TARGET = Linux
+		endif
+		ifeq ($(OS), Windows_NT) #WINDOWS
+			TARGET = Windows
+		endif
+		ifeq ($(UNAME_S), Darwin) #APPLE
+			TARGET = Apple
+		endif
+	endif
+	ifeq ($(TARGET), Linux)
+		ABI_CFLAGS = -Wl,-z,nodelete
+		ABI_CXXFLAGS = -Wl,-z,relro,-z,now
+		ABI_LDFLAGS = -Wl,-z,noexecstack
+		GUI_LIBS = -L/usr/X11/lib -lX11
+		LIB_EXT = so
+		GUI_PLATFORM_FILES = $(GUI_PLATFORM_DIR)/gx_platform_linux.c
+	endif
+	ifeq ($(TARGET), Windows)
+		ECHO += -e
+		ABI_LDFLAGS = -static -lpthread
+		GUI_LIBS = -liconv -lstdc++
+		PKGCONFIG_FLAGS = --static
+		LIB_EXT = dll
+		TTLUPDATE = sed -i '/lv2:binary/ s/\.so/\.dll/ ' $(BUNDLE)/manifest.ttl
+		TTLUPDATEGUI = sed -i '/a guiext:X11UI/ s/X11UI/WindowsUI/ ; /guiext:binary/ s/\.so/\.dll/ ' $(BUNDLE)/$(NAME).ttl
+		GUI_PLATFORM_FILES = $(GUI_PLATFORM_DIR)/gx_platform_mswin.c
+	endif
+	ifeq ($(TARGET), Apple)
+		# insert magic here
+		GUI_PLATFORM_FILES = $(GUI_PLATFORM_DIR)/gx_platform_apple.c
+	endif
 	# set compile flags
 	CXXFLAGS += -D_FORTIFY_SOURCE=2 -I. -I./dsp -I./plugin -I./dsp/zita-resampler-1.1.0 -I./dsp/zita-resampler-1.1.0/zita-resampler \
 	 -fPIC -DPIC -O2 -Wall -fstack-protector -funroll-loops -ffast-math -fomit-frame-pointer -fstrength-reduce \
-	 -fdata-sections -Wl,--gc-sections -Wl,-z,relro,-z,now $(SSE_CFLAGS)
+	 -fdata-sections -Wl,--gc-sections $(ABI_CXXFLAGS) $(SSE_CFLAGS) `$(PKGCONFIG) $(PKGCONFIG_FLAGS) --cflags lv2`
 	DEBUGFLAGS += -I. -I./dsp -I./plugin -fPIC -DPIC -O2 -Wall -D DEBUG
-	LDFLAGS += -I. -shared -lm -Wl,-z,noexecstack
-	GUI_LDFLAGS += -I./gui -shared -Wl,-z,noexecstack -lm `pkg-config --cflags --libs cairo` -L/usr/X11/lib -lX11
+	LDFLAGS += -I. -shared -lm $(ABI_LDFLAGS)
+	GUI_LDFLAGS += -I./gui -shared $(ABI_LDFLAGS) -lm `$(PKGCONFIG) $(PKGCONFIG_FLAGS) --cflags --libs cairo` $(GUI_LIBS)
 	# invoke build files
 	OBJECTS = plugin/$(NAME).cpp
-	GUI_OBJECTS = gui/$(NAME)_x11ui.c
+	GUI_OBJECTS = gui/$(NAME)_gui.c $(GUI_PLATFORM_FILES)
 	RES_OBJECTS = gui/pedal.o gui/pswitch.o
 	## output style (bash colours)
+	LGREEN = "\033[1;92m"
 	BLUE = "\033[1;34m"
 	RED =  "\033[1;31m"
 	NONE = "\033[0m"
-	ECHO = $(shell which echo) -e
 
 .PHONY : mod all clean install uninstall
 
 all : check $(NAME)
 	@mkdir -p ./$(BUNDLE)
 	@cp ./plugin/*.ttl ./$(BUNDLE)
-	@mv ./*.so ./$(BUNDLE)
-	@if [ -f ./$(BUNDLE)/$(NAME).so ]; then $(ECHO) $(BLUE)"build finish, now run make install"; \
+	@mv ./*.$(LIB_EXT) ./$(BUNDLE)
+	$(TTLUPDATE)
+	$(TTLUPDATEGUI)
+	@if [ -f ./$(BUNDLE)/$(NAME).$(LIB_EXT) ]; then $(ECHO) $(BLUE)"build finish, now run make install"; \
 	else $(ECHO) $(RED)"sorry, build failed"; fi
 	@$(ECHO) $(NONE)
 
 debug : check $(NAME)debug
 	@mkdir -p ./$(BUNDLE)
 	@cp ./plugin/*.ttl ./$(BUNDLE)
-	@mv ./*.so ./$(BUNDLE)
-	@if [ -f ./$(BUNDLE)/$(NAME).so ]; then $(ECHO) $(BLUE)"build finish, now run make install"; \
+	@mv ./*.$(LIB_EXT) ./$(BUNDLE)
+	$(TTLUPDATE)
+	$(TTLUPDATEGUI)
+	@if [ -f ./$(BUNDLE)/$(NAME).$(LIB_EXT) ]; then $(ECHO) $(BLUE)"build finish, now run make install"; \
 	else $(ECHO) $(RED)"sorry, build failed"; fi
 	@$(ECHO) $(NONE)
 
 mod : nogui
 	@mkdir -p ./$(BUNDLE)
 	@cp -R ./MOD/* ./$(BUNDLE)
-	@mv ./*.so ./$(BUNDLE)
-	@if [ -f ./$(BUNDLE)/$(NAME).so ]; then $(ECHO) $(BLUE)"build finish, now run make install"; \
+	@mv ./*.$(LIB_EXT) ./$(BUNDLE)
+	$(TTLUPDATE)
+	@if [ -f ./$(BUNDLE)/$(NAME).$(LIB_EXT) ]; then $(ECHO) $(BLUE)"build finish, now run make install"; \
 	else $(ECHO) $(RED)"sorry, build failed"; fi
 	@$(ECHO) $(NONE)
 
@@ -85,16 +139,16 @@ endif
    #@build resource object files
 $(RES_OBJECTS) : gui/pedal.png gui/pswitch.png
 	@$(ECHO) $(LGREEN)"generate resource files,"$(NONE)
-	-@cd ./gui && $(LD) -r -b binary pedal.png -o pedal.o
-	-@cd ./gui && $(LD) -r -b binary pswitch.png -o pswitch.o
+	-cd ./gui && $(LD) -r -b binary pedal.png -o pedal.o
+	-cd ./gui && $(LD) -r -b binary pswitch.png -o pswitch.o
 
 clean :
-	@rm -f $(NAME).so
+	@rm -f $(NAME).$(LIB_EXT)
 	@rm -rf ./$(BUNDLE)
 	@$(ECHO) ". ." $(BLUE)", clean up"$(NONE)
 
 dist-clean :
-	@rm -f $(NAME).so
+	@rm -f $(NAME).$(LIB_EXT)
 	@rm -rf ./$(BUNDLE)
 	@rm -rf ./$(RES_OBJECTS)
 	@$(ECHO) ". ." $(BLUE)", clean up"$(NONE)
@@ -113,15 +167,15 @@ uninstall :
 	@$(ECHO) ". ." $(BLUE)", done"$(NONE)
 
 $(NAME) : clean $(RES_OBJECTS)
-	$(CXX) $(CXXFLAGS) $(OBJECTS) $(LDFLAGS) -o $(NAME).so
-	$(CC) $(CXXFLAGS) -Wl,-z,nodelete $(GUI_OBJECTS) $(RES_OBJECTS) $(GUI_LDFLAGS) -o $(NAME)_ui.so
-	$(STRIP) -s -x -X -R .comment -R .note.ABI-tag $(NAME).so
-	$(STRIP) -s -x -X -R .comment -R .note.ABI-tag $(NAME)_ui.so
+	$(CXX) $(CXXFLAGS) $(OBJECTS) $(LDFLAGS) -o $(NAME).$(LIB_EXT)
+	$(CC) $(CXXFLAGS) $(ABI_CFLAGS) $(GUI_OBJECTS) $(RES_OBJECTS) $(GUI_LDFLAGS) -o $(NAME)_ui.$(LIB_EXT)
+	$(STRIP) -s -x -X -R .comment -R .note.ABI-tag $(NAME).$(LIB_EXT)
+	$(STRIP) -s -x -X -R .comment -R .note.ABI-tag $(NAME)_ui.$(LIB_EXT)
 
 $(NAME)debug : clean $(RES_OBJECTS)
-	$(CXX) $(DEBUGFLAGS) $(OBJECTS) $(LDFLAGS) -o $(NAME).so
-	$(CC) $(DEBUGFLAGS) -Wl,-z,nodelete $(GUI_OBJECTS) $(RES_OBJECTS) $(GUI_LDFLAGS) -o $(NAME)_ui.so
+	$(CXX) $(DEBUGFLAGS) $(OBJECTS) $(LDFLAGS) -o $(NAME).$(LIB_EXT)
+	$(CC) $(DEBUGFLAGS) $(ABI_CFLAGS) $(GUI_OBJECTS) $(RES_OBJECTS) $(GUI_LDFLAGS) -o $(NAME)_ui.$(LIB_EXT)
 
 nogui : clean
-	$(CXX) $(CXXFLAGS) $(OBJECTS) $(LDFLAGS) -o $(NAME).so
-	$(STRIP) -s -x -X -R .comment -R .note.ABI-tag $(NAME).so
+	$(CXX) $(CXXFLAGS) $(OBJECTS) $(LDFLAGS) -o $(NAME).$(LIB_EXT)
+	$(STRIP) -s -x -X -R .comment -R .note.ABI-tag $(NAME).$(LIB_EXT)
